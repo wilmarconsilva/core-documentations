@@ -1,0 +1,38 @@
+@startuml Diagrama de sequência da sincronização dos dados
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam sequenceMessageAlign left
+skinparam ParticipantPadding 20
+hide footbox
+autonumber
+
+participant "Sessão" as Sessao
+participant "DataSynchronization\nService" as Sync
+database "IndexedDB" as IDB
+participant "Back-end" as API
+
+Sessao ->> Sync : synchronize()
+activate Sync
+
+== Envio dos registros locais ==
+Sync -> IDB : busca produtos, clientes,\npedidos e orçamentos locais
+IDB --> Sync : registros locais
+loop para cada registro local
+  Sync -> API : envia registro
+  alt registro aceito
+    API --> Sync : id do servidor
+    Sync -> IDB : remove a cópia local
+  else registro recusado
+    API --> Sync : erro
+    Sync -> IDB : grava pendência
+  end
+end
+
+== Atualização dos dados do servidor ==
+Sync -> API : busca produtos, clientes,\nlocalidades e usuário atual
+API --> Sync : registros do servidor
+Sync -> IDB : substitui os registros do servidor
+
+Sync -->> Sessao : status da sincronização\n(sucesso ou falha)
+deactivate Sync
+@enduml
